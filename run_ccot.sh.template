@@ -3,13 +3,13 @@ echo "Start running..."
 export HF_ENDPOINT=https://hf-mirror.com
 
 accelerate launch run_ccot.py \
-    --model_name_or_path gpt2 \
-    --config_name configs/pccot_gpt2_small.json \
+    --model_name_or_path meta-llama/Llama-3.2-1B-Instruct \
+    --config_name configs/pccot_llama3.2_1b_inst.json \
     --config_overrides num_iterations=3 \
     --num_latent_tokens 24 \
     --dataset_name whynlp/gsm8k-aug \
     --label_names labels cot_labels \
-    --lora_target_modules c_attn-c_fc-c_proj \
+    --lora_target_modules q_proj-k_proj-v_proj-o_proj-gate_proj-up_proj-down_proj \
     --lora_modules_to_save "" \
     --remove_unused_columns false \
     --per_device_train_batch_size 128 \
@@ -21,14 +21,14 @@ accelerate launch run_ccot.py \
     --use_liger_kernel \
     --lr_scheduler_type cosine \
     --warmup_ratio 0.03 \
-    --learning_rate 3e-3 \
-    --weight_decay 1e-2 \
+    --learning_rate 8e-4 \
+    --weight_decay 1e-1 \
     --bf16 \
     --torch_dtype bfloat16 \
     --do_train \
     --do_eval \
     --do_predict \
-    --num_train_epochs 40 \
+    --num_train_epochs 10 \
     --save_total_limit 1 \
     --save_strategy steps \
     --save_steps 200 \
@@ -38,5 +38,6 @@ accelerate launch run_ccot.py \
     --load_best_model_at_end True \
     --metric_for_best_model eval_ccot_exact_match \
     --report_to none \
-    --run_name pcot-gpt2-lora-3-24 \
-    --output_dir outputs/pcot-gpt2-lora-3-24
+    --run_name pcot-llama3.2-1B-Instruct \
+    --output_dir outputs/pcot-llama3.2-1B-Instruct-for-simple-train \
+    --overwrite_output_dir True \

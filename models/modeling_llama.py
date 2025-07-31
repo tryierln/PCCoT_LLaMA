@@ -1,6 +1,7 @@
 import math
 import warnings
 from typing import List, Optional, Tuple, Union, Dict, Any
+from copy import deepcopy
 
 import torch
 import torch.nn.functional as F
@@ -95,19 +96,33 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
         ## Part 1. teacher CoT
 
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
+        past_key_values_copy = deepcopy(past_key_values)
+        cache_position_copy = deepcopy(cache_position)
         outputs = self.model(
             input_ids=cot_input_ids,
             attention_mask=cot_attention_mask,
             position_ids=position_ids,
-            past_key_values=past_key_values,
+            past_key_values=past_key_values_copy,
             inputs_embeds=inputs_embeds,
             use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=True,
             return_dict=return_dict,
-            cache_position=cache_position,
+            cache_position=cache_position_copy,
         )
-
+        with torch.no_grad():
+            outputs_with_no_grid = self.model(
+                input_ids=cot_input_ids,
+                attention_mask=cot_attention_mask,
+                position_ids=position_ids,
+                past_key_values=past_key_values,
+                inputs_embeds=inputs_embeds,
+                use_cache=use_cache,
+                output_attentions=output_attentions,
+                output_hidden_states=True,
+                return_dict=return_dict,
+                cache_position=cache_position,
+            )
         hidden_states = outputs[0]
         if self.config.pretraining_tp > 1:
             lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
@@ -139,7 +154,7 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
             attention_mask=attention_mask[:, :latent_boundary],
             past_key_values=DynamicCache(),
         )
-        last_hidden_state = ccot_outputs[0][:, question_boundary-1:latent_boundary-1]
+        last_hidden_state = ccot_outputs[0][:, question_boundary-1:latent_boundary-1,:]
         latent_input_embeds = self.prj(last_hidden_state).to(dtype=last_hidden_state.dtype)
         question_past_key_values = DynamicCache()
         question_past_key_values.key_cache = ccot_outputs.past_key_values.key_cache[:]
@@ -162,8 +177,14 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
             latent_input_embeds = torch.cat([latent_input_embeds[:, :1], projected_hidden_state[:, :-1]], dim=1)
         
         # predict the answer
+        try:
+            embed = self.model.get_base_model().model.embed_tokens
+        except AttributeError:
+            embed = self.model.embed_tokens
+        embeds = embed(input_ids[:, latent_boundary:])
         answer_outputs = self.model(
-            input_ids=input_ids[:, latent_boundary:],
+            inputs_embeds=embeds,
+            use_cache=True,
             attention_mask=attention_mask,
             past_key_values=ccot_outputs.past_key_values,
             output_hidden_states=True,
@@ -189,7 +210,7 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
             ccot_loss = loss_fct(shift_logits, shift_labels)
 
         ## Part 3. knowledge distillation
-        teacher_hidden_states = torch.stack(outputs.hidden_states, dim=1).detach()[:, 1:] # (batch_size, num_layers, seq_len, hidden_size)
+        teacher_hidden_states = torch.stack(outputs_with_no_grid.hidden_states, dim=1).detach()[:, 1:] # (batch_size, num_layers, seq_len, hidden_size)
         teacher_hidden_states = teacher_hidden_states.gather(2, cot_kd_indices[:, None, None, None].expand(-1, self.config.num_hidden_layers, -1, self.config.hidden_size))
         student_hidden_states = torch.stack(answer_outputs.hidden_states, dim=1)[:, 1:, ccot_kd_index:ccot_kd_index+1]
 

@@ -27,7 +27,7 @@ class PCCoTLlamaConfig(LlamaConfig):
         self,
         loss_alpha=1.0,
         loss_beta=1.0,
-        loss_gamma=1.0,
+        loss_gamma=20.0,
         use_layerwise_std=True,
         use_projection=False,
         num_iterations=6,
