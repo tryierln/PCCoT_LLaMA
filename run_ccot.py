@@ -720,7 +720,7 @@ def main():
         embedding_layer_name = "wte" if is_gpt2 else "embed_tokens"
         special_token_ids = [pccot_args.bot_token_id, pccot_args.eot_token_id, pccot_args.latent_token_id, tokenizer.pad_token_id, tokenizer.eos_token_id]
         peft_config = LoraConfig(
-            inference_mode=False, r=pccot_args.lora_r, lora_alpha=pccot_args.lora_alpha, lora_dropout=pccot_args.lora_dropout,
+            task_type=TaskType.CAUSAL_LM, inference_mode=False, r=pccot_args.lora_r, lora_alpha=pccot_args.lora_alpha, lora_dropout=pccot_args.lora_dropout,
             target_modules=pccot_args.lora_target_modules.split("-"),
             trainable_token_indices={embedding_layer_name: special_token_ids},
             modules_to_save=pccot_args.lora_modules_to_save.split("-") if pccot_args.lora_modules_to_save else None,
