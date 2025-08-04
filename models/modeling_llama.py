@@ -182,6 +182,7 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
             embed = self.model.get_base_model().model.embed_tokens
         except AttributeError:
             embed = self.model.embed_tokens
+        
         embeds = embed(input_ids[:, latent_boundary:])
         answer_outputs = self.model(
             inputs_embeds=embeds,

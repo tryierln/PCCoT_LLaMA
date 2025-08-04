@@ -29,7 +29,7 @@ class PCCoTLlamaConfig(LlamaConfig):
         loss_beta=1.0,
         loss_gamma=20.0,
         use_layerwise_std=True,
-        use_projection=False,
+        use_projection=True,
         num_iterations=6,
         **kwargs
     ):
