@@ -53,7 +53,7 @@ from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version, send_example_telemetry, cached_file
 from transformers.utils.versions import require_version
-from peft import get_peft_config, get_peft_model, LoraConfig, TaskType, PeftModel, AutoPeftModel
+from peft import get_peft_config, get_peft_model, LoraConfig, TaskType, PeftModel, AutoPeftModel,AutoPeftModelForCausalLM
 from peft.utils import CONFIG_NAME as PEFT_CONFIG_NAME
 
 import models
@@ -498,7 +498,7 @@ def main():
             )
             is not None
         ):
-            model = AutoPeftModel.from_pretrained(
+            model = AutoPeftModelForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 from_tf=bool(".ckpt" in model_args.model_name_or_path),
                 cache_dir=model_args.cache_dir,
@@ -786,6 +786,7 @@ def main():
                 collated=collated,
                 max_new_tokens=10,
                 do_sample=False,
+                pad_token_id=tokenizer.pad_token_id,
             )
             
             decoded_tokens = decoded_tokens[:, collated["input_ids"].shape[1]:]  # remove the input_ids part
