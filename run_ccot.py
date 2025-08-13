@@ -670,8 +670,8 @@ def main():
             preds = [ignore_after_eos(pred) for pred in preds]
             labels = [ignore_after_eos(label) for label in labels]
 
-            decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
-            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+            decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=False)
+            decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=False)
 
             logger.info("CCoT Results")
             for i, pred, label in zip(range(10), decoded_preds, decoded_labels):
@@ -684,7 +684,7 @@ def main():
             cot_preds[cot_preds == -100] = tokenizer.pad_token_id
             cot_preds[cot_labels == -100] = tokenizer.pad_token_id
             cot_preds = [ignore_after_eos(pred) for pred in cot_preds]
-            decoded_cot_preds = tokenizer.batch_decode(cot_preds, skip_special_tokens=True)
+            decoded_cot_preds = tokenizer.batch_decode(cot_preds, skip_special_tokens=False)
             decoded_cot_preds = [
                 # only keep the string after pccot_args.answer_prompt
                 pred[pred.index(pccot_args.answer_prompt) + len(pccot_args.answer_prompt):] if pccot_args.answer_prompt in pred else pred

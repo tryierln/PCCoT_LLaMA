@@ -12,10 +12,10 @@ accelerate launch run_ccot.py \
     --lora_target_modules q_proj-k_proj-v_proj-o_proj-gate_proj-up_proj-down_proj \
     --lora_modules_to_save "" \
     --remove_unused_columns false \
-    --per_device_train_batch_size 128 \
+    --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 32 \
     --auto_find_batch_size \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 8 \
     --block_size 1024 \
     --attn_implementation flash_attention_2 \
     --use_liger_kernel \
@@ -39,5 +39,4 @@ accelerate launch run_ccot.py \
     --metric_for_best_model eval_ccot_exact_match \
     --report_to none \
     --run_name pcot-llama3.2-1B-Instruct \
-    --output_dir outputs/pcot-llama3.2-1B-Instruct-for-simple-train \
-    --overwrite_output_dir True \
+    --output_dir outputs/pcot-llama3.2-1B-Instruct-is-same-1 \

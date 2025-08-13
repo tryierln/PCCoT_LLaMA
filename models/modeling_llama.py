@@ -27,6 +27,7 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
         self.model = LlamaModel(config)
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.config = config
 
         if config.use_projection:
             hidden_dim = config.hidden_size
@@ -214,16 +215,17 @@ class PCCoTLlamaForCausalLM(LlamaForCausalLM, PCCoTGenerationMixin):
         ## Part 3. knowledge distillation
         if self.config.use_layerwise_std:
             kd_loss = 0.0
-            for i in range(len(outputs_with_no_grid.hidden_states)):
-                teacher_hidden_states = outputs_with_no_grid.hidden_states[i][:,1:] # (batch_size, seq_len, hidden_size)
+            for i in range(1, len(outputs_with_no_grid.hidden_states)):
+                teacher_hidden_states = outputs_with_no_grid.hidden_states[i] # (batch_size, seq_len, hidden_size)
                 teacher_hidden_states = teacher_hidden_states.gather(1, cot_kd_indices.unsqueeze(-1).unsqueeze(-1).expand(-1, -1, teacher_hidden_states.size(-1)))
-                student_hidden_states = answer_outputs.hidden_states[i][:,1:]
+                student_hidden_states = answer_outputs.hidden_states[i]
                 student_hidden_states = student_hidden_states.gather(1, tensor([ccot_kd_index] * teacher_hidden_states.shape[0], dtype = torch.long, device= student_hidden_states.device ).unsqueeze(-1).unsqueeze(-1).expand(-1, -1, student_hidden_states.size(-1)))
                 
                 kd_loss_tmp = F.smooth_l1_loss(student_hidden_states, teacher_hidden_states.detach())
+                kd_loss_tmp /= teacher_hidden_states.std()
                 kd_loss += kd_loss_tmp
             
-            kd_loss /= len(outputs_with_no_grid.hidden_states)  # average over layers
+            kd_loss /= (len(outputs_with_no_grid.hidden_states) - 1)  # average over layers
         else:
             teacher_hidden_states = torch.stack(outputs_with_no_grid.hidden_states, dim=1).detach()[:, 1:] # (batch_size, num_layers, seq_len, hidden_size)
             teacher_hidden_states = teacher_hidden_states.gather(2, cot_kd_indices[:, None, None, None].expand(-1, self.config.num_hidden_layers, -1, self.config.hidden_size))
