@@ -13,6 +13,7 @@ accelerate launch run_cot.py \
     --per_device_eval_batch_size 32 \
     --auto_find_batch_size \
     --gradient_accumulation_steps 1 \
+    --max_grad_norm 2.0 \
     --block_size 1024 \
     --attn_implementation flash_attention_2 \
     --use_liger_kernel \
@@ -37,4 +38,5 @@ accelerate launch run_cot.py \
     --report_to none \
     --run_name cot-gpt2-lora-test \
     --overwrite_output_dir \
-    --output_dir outputs/cot-gpt2-lora-test
+    --output_dir outputs/cot-gpt2-lora-test \
+    --seed 1 \
